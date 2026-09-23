@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Remix Maps Explorer</title>
+  <meta name="description" content="Discover any destination on Earth in natural language. Powered by Gemini AI and Google Maps." />
+  <meta property="og:title" content="Remix Maps Explorer" />
+  <meta property="og:description" content="Discover any destination on Earth in natural language. Powered by Gemini AI and Google Maps." />
+
+  <!-- Web font link: Cinzel (Serif) & Plus Jakarta Sans (Clean Sans) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/index.css" />
+
+  <style>
+    /* Full-Bleed Hero Landing Overlay */
+    #hero-landing-page {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      background-color: #0a0d14;
+      overflow-x: hidden;
+      overflow-y: auto;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s ease;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    #hero-landing-page.gate-hidden {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      display: none !important;
+    }
+
+    /* Subtle Scattered Starfield Layer */
+    .stars-field {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .star {
+      fill: #ffffff;
+    }
+
+    .star-faint {
+      opacity: 0.35;
+    }
+
+    .star-medium {
+      opacity: 0.65;
+    }
+
+    .star-bright {
+      opacity: 0.95;
+    }
+
+    .star-cyan {
+      fill: #a5f3fc;
+      opacity: 0.85;
+    }
+
+    /* Top Navigation Bar */
+    .top-nav {
+      position: relative;
+      z-index: 25;
+      width: 100%;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(20px, 4vw, 64px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(10, 13, 20, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    /* Left: Logo */
+    .nav-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      text-decoration: none;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .logo-text-white {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      text-transform: lowercase;
+    }
+
+    .logo-text-accent {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #06b6d4;
+      text-transform: lowercase;
+    }
+
+    /* Center-Right: Nav Links */
+    .nav-links-wrapper {
+      display: flex;
+      align-items: center;
+      gap: clamp(16px, 2.5vw, 36px);
+      margin-left: auto;
+      margin-right: clamp(16px, 3vw, 40px);
+    }
+
+    .nav-link {
+      position: relative;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      transition: color 0.2s ease;
+      padding: 8px 2px;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+
+    .nav-link:hover {
+      color: #ffffff;
+    }
+
+    /* Active Nav Link with Cyan Underline */
+    .nav-link.active {
+      color: #ffffff;
+    }
+
+    .nav-link.active::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: #06b6d4;
+      border-radius: 2px;
+      box-shadow: 0 0 8px rgba(6, 182, 212, 0.75);
+    }
+
+    /* Far Right: Launch App Pill Button */
+    .nav-cta-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 24px;
+      background-color: #ffffff;
+      color: #0a0d14;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      border-radius: 9999px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.12);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .nav-cta-btn:hover {
+      background-color: #f1f5f9;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(255, 255, 255, 0.22);
+    }
+
+    .nav-cta-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Main Hero Content Area */
+    .hero-content {
+      position: relative;
+      z-index: 10;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 24px clamp(160px, 28vh, 280px) 24px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* Eyebrow Label */
+    .hero-eyebrow {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: clamp(0.72rem, 1.1vw, 0.82rem);
+      font-weight: 500;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.65);
+      margin-bottom: clamp(14px, 2.2vh, 22px);
+      user-select: none;
+    }
+
+    /* Huge Serif Headline: EARTH */
+    .hero-headline {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(4.5rem, 13vw, 10.5rem);
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      line-height: 0.95;
+      text-transform: uppercase;
+      color: #ffffff;
+      margin-left: 0.2em; /* Compensate for wide letter-spacing on last letter */
+      text-shadow: 0 0 40px rgba(255, 255, 255, 0.2), 0 0 80px rgba(6, 182, 212, 0.15);
+      user-select: none;
+    }
+
+    /* Accent-Colored Underline Divider Below Title */
+    .hero-divider {
+      width: 52px;
+      height: 2px;
+      background-color: #06b6d4;
+      margin: clamp(20px, 3vh, 32px) auto clamp(22px, 3.2vh, 34px) auto;
+      border-radius: 2px;
+      box-shadow: 0 0 12px rgba(6, 182, 212, 0.8), 0 0 24px rgba(6, 182, 212, 0.4);
+    }
+
+    /* 3-Line Muted-Gray Paragraph */
+    .hero-paragraph {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: clamp(0.92rem, 1.25vw, 1.05rem);
+      font-weight: 400;
+      line-height: 1.68;
+      color: #94a3b8;
+      max-width: 620px;
+      margin: 0 auto clamp(28px, 4vh, 42px) auto;
+    }
+
+    /* Centered White Pill Button: GET STARTED */
+    .hero-cta-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 15px 40px;
+      background-color: #ffffff;
+      color: #0a0d14;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.84rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      border-radius: 9999px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(255, 255, 255, 0.16), 0 0 35px rgba(6, 182, 212, 0.22);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+
+    .hero-cta-btn:hover {
+      background-color: #f8fafc;
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 10px 32px rgba(255, 255, 255, 0.26), 0 0 45px rgba(6, 182, 212, 0.35);
+    }
+
+    .hero-cta-btn:active {
+      transform: translateY(0) scale(1);
+    }
+
+    /* Full-Width Earth from Space Photographic Anchor */
+    .earth-anchor-container {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: clamp(240px, 44vh, 520px);
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 2;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+    }
+
+    /* Photographic image of Earth from orbit */
+    .earth-photo {
+      width: 100%;
+      height: 145%;
+      object-fit: cover;
+      object-position: center top;
+      /* Seamless fade into near-black background at top with no hard edge */
+      mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 30%, rgba(0, 0, 0, 0.75) 65%, rgba(0, 0, 0, 0) 98%);
+      -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 30%, rgba(0, 0, 0, 0.75) 65%, rgba(0, 0, 0, 0) 98%);
+      filter: contrast(1.06) brightness(1.02);
+      transform: translateZ(0);
+    }
+
+    /* Atmospheric Glow Gradient Overlay */
+    .earth-atmosphere-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 85% 45% at 50% 100%, rgba(6, 182, 212, 0.16) 0%, rgba(10, 13, 20, 0) 70%),
+                  linear-gradient(to bottom, #0a0d14 0%, rgba(10, 13, 20, 0.35) 30%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Guide Modal Dialog */
+    #guide-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 13, 20, 0.85);
+      backdrop-filter: blur(16px);
+      padding: 20px;
+    }
+
+    #guide-modal.hidden {
+      display: none;
+    }
+
+    .guide-modal-content {
+      background: #11141d;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      max-width: 620px;
+      width: 100%;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(6, 182, 212, 0.12);
+      position: relative;
+    }
+
+    .guide-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .guide-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: rgba(6, 182, 212, 0.12);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      border-radius: 9999px;
+      color: #22d3ee;
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .close-guide-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 24px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .close-guide-btn:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .guide-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .guide-subtitle {
+      font-size: 0.92rem;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .guide-features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 26px;
+    }
+
+    .guide-feat-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+
+    .guide-feat-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .guide-feat-desc {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
+
+    .guide-modal-action {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .guide-cta-btn {
+      padding: 10px 24px;
+      background: #ffffff;
+      color: #0a0d14;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border-radius: 9999px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .guide-cta-btn:hover {
+      background: #f1f5f9;
+      transform: translateY(-1px);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .top-nav {
+        padding: 0 20px;
+        height: 64px;
+      }
+
+      .nav-links-wrapper {
+        gap: 16px;
+        margin-right: 14px;
+      }
+
+      .nav-link {
+        font-size: 0.82rem;
+      }
+
+      .nav-cta-btn {
+        padding: 7px 16px;
+        font-size: 0.8rem;
+      }
+
+      .hero-content {
+        padding: 30px 18px clamp(130px, 24vh, 200px) 18px;
+      }
+
+      .hero-headline {
+        letter-spacing: 0.16em;
+        margin-left: 0.16em;
+      }
+
+      .hero-paragraph {
+        font-size: 0.92rem;
+        line-height: 1.6;
+        padding: 0 4px;
+      }
+
+      .hero-cta-btn {
+        padding: 13px 30px;
+        font-size: 0.8rem;
+      }
+
+      .guide-features-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .nav-links-wrapper {
+        display: none;
+      }
+
+      .hero-headline {
+        font-size: clamp(3.6rem, 16vw, 5.2rem);
+        letter-spacing: 0.14em;
+        margin-left: 0.14em;
+      }
+
+      .hero-eyebrow {
+        letter-spacing: 0.22em;
+        font-size: 0.7rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Quota Detection Banner -->
+  <div id="quota-banner" class="hidden" role="alert">
+    <div id="quota-banner-content">
+      <span>
+        Google Maps Platform quota reached. If you are the app owner, visit <a href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors" target="_blank" rel="noopener noreferrer">maps developer site</a> for instructions to update your account.
+      </span>
+      <button type="button" id="close-quota-banner" aria-label="Dismiss banner">&times;</button>
+    </div>
+  </div>
+
+  <!-- Single-Page Full-Bleed Hero Landing Page -->
+  <div id="hero-landing-page" role="region" aria-label="Remix Maps Explorer Landing">
+
+    <!-- Subtle Scattered White Dot Stars Across Night-Sky Background -->
+    <svg class="stars-field" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <!-- Faint & Distant Stars -->
+      <circle cx="85" cy="110" r="0.9" class="star star-faint" />
+      <circle cx="140" cy="280" r="1.1" class="star star-faint" />
+      <circle cx="210" cy="75" r="0.8" class="star star-faint" />
+      <circle cx="295" cy="190" r="1.0" class="star star-faint" />
+      <circle cx="380" cy="120" r="0.9" class="star star-faint" />
+      <circle cx="460" cy="290" r="1.2" class="star star-faint" />
+      <circle cx="530" cy="80" r="0.8" class="star star-faint" />
+      <circle cx="620" cy="160" r="1.0" class="star star-faint" />
+      <circle cx="710" cy="95" r="1.1" class="star star-faint" />
+      <circle cx="820" cy="220" r="0.8" class="star star-faint" />
+      <circle cx="915" cy="130" r="1.2" class="star star-faint" />
+      <circle cx="1020" cy="85" r="0.9" class="star star-faint" />
+      <circle cx="1110" cy="250" r="1.0" class="star star-faint" />
+      <circle cx="1205" cy="140" r="0.8" class="star star-faint" />
+      <circle cx="1310" cy="90" r="1.1" class="star star-faint" />
+      <circle cx="1390" cy="210" r="0.9" class="star star-faint" />
+
+      <!-- Mid-layer Stars -->
+      <circle cx="60" cy="340" r="1.4" class="star star-medium" />
+      <circle cx="175" cy="420" r="1.3" class="star star-medium" />
+      <circle cx="240" cy="310" r="1.2" class="star star-medium" />
+      <circle cx="340" cy="410" r="1.4" class="star star-medium" />
+      <circle cx="490" cy="380" r="1.3" class="star star-medium" />
+      <circle cx="590" cy="290" r="1.5" class="star star-medium" />
+      <circle cx="750" cy="370" r="1.3" class="star star-medium" />
+      <circle cx="860" cy="310" r="1.4" class="star star-medium" />
+      <circle cx="970" cy="420" r="1.2" class="star star-medium" />
+      <circle cx="1080" cy="340" r="1.5" class="star star-medium" />
+      <circle cx="1190" cy="400" r="1.3" class="star star-medium" />
+      <circle cx="1280" cy="320" r="1.4" class="star star-medium" />
+      <circle cx="1360" cy="430" r="1.2" class="star star-medium" />
+
+      <!-- Bright Stars & Subtle Cyan Starlight -->
+      <circle cx="120" cy="160" r="1.8" class="star star-bright" />
+      <circle cx="270" cy="110" r="1.6" class="star star-bright" />
+      <circle cx="420" cy="210" r="1.7" class="star star-bright" />
+      <circle cx="670" cy="115" r="1.9" class="star star-bright" />
+      <circle cx="790" cy="170" r="1.7" class="star star-cyan" />
+      <circle cx="940" cy="80" r="1.8" class="star star-bright" />
+      <circle cx="1160" cy="165" r="1.9" class="star star-bright" />
+      <circle cx="1250" cy="180" r="1.6" class="star star-cyan" />
+      <circle cx="1340" cy="130" r="1.7" class="star star-bright" />
+
+      <!-- Lower Horizon Fringe Stars -->
+      <circle cx="90" cy="510" r="1.1" class="star star-faint" />
+      <circle cx="215" cy="540" r="1.0" class="star star-faint" />
+      <circle cx="390" cy="490" r="1.2" class="star star-faint" />
+      <circle cx="580" cy="480" r="1.1" class="star star-faint" />
+      <circle cx="810" cy="470" r="1.3" class="star star-faint" />
+      <circle cx="1040" cy="495" r="1.0" class="star star-faint" />
+      <circle cx="1220" cy="520" r="1.2" class="star star-faint" />
+      <circle cx="1370" cy="500" r="1.1" class="star star-faint" />
+    </svg>
+
+    <!-- 1. Top Navigation Bar -->
+    <header class="top-nav">
+      <!-- Left: Logo text "remix" + "maps" in accent color, small and bold -->
+      <a href="#" class="nav-logo" id="nav-logo" aria-label="Remix Maps Explorer Home">
+        <span class="logo-text-white">remix</span>
+        <span class="logo-text-accent">maps</span>
+      </a>
+
+      <!-- Center-Right: Nav Links (Explore active with cyan underline) -->
+      <nav class="nav-links-wrapper" aria-label="Main Navigation">
+        <button type="button" class="nav-link active" id="nav-link-explore">Explore</button>
+        <button type="button" class="nav-link" id="nav-link-themes">Themes</button>
+        <button type="button" class="nav-link" id="nav-link-countries">Countries</button>
+        <button type="button" class="nav-link" id="nav-link-guide">Guide</button>
+      </nav>
+
+      <!-- Far Right: White Pill Button labeled "Launch App" -->
+      <button type="button" class="nav-cta-btn" id="launch-app-btn" onclick="window.closeLandingPage && window.closeLandingPage('explore')">Launch App</button>
+    </header>
+
+    <!-- 2. Hero Content, Centered -->
+    <main class="hero-content">
+      <!-- Small letter-spaced eyebrow text -->
+      <div class="hero-eyebrow">AI-POWERED EXPLORATION</div>
+
+      <!-- Huge serif headline -->
+      <h1 class="hero-headline">EARTH</h1>
+
+      <!-- Short horizontal accent-colored divider line centered beneath headline -->
+      <div class="hero-divider" aria-hidden="true"></div>
+
+      <!-- 3-line centered muted-gray paragraph -->
+      <p class="hero-paragraph">
+        Discover any destination on Earth in natural language. Powered by Gemini AI and Google Maps, explore landmarks, ancient ruins, and hidden places with live 3D terrain, Street View, and real-time weather.
+      </p>
+
+      <!-- Centered white pill button with dark text -->
+      <button type="button" class="hero-cta-btn" id="get-started-btn" onclick="window.closeLandingPage && window.closeLandingPage('explore')">GET STARTED</button>
+    </main>
+
+    <!-- 3. Full-width Photographic Image of Earth Anchored to Bottom of Hero -->
+    <div class="earth-anchor-container" aria-hidden="true">
+      <img
+        src="/earth_orbit_hero.jpg"
+        alt="Photorealistic planet Earth from orbit with curved horizon"
+        class="earth-photo"
+        referrerPolicy="no-referrer"
+      />
+      <div class="earth-atmosphere-glow"></div>
+    </div>
+
+  </div>
+
+  <!-- Interactive Guide Modal -->
+  <div id="guide-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="guide-modal-title">
+    <div class="guide-modal-content">
+      <div class="guide-modal-header">
+        <div class="guide-badge">Guide & Features</div>
+        <button type="button" id="close-guide-modal" class="close-guide-btn" aria-label="Close guide">&times;</button>
+      </div>
+      <h2 id="guide-modal-title" class="guide-title">Explore Earth with Gemini AI & Google Maps</h2>
+      <p class="guide-subtitle">
+        Type natural questions or click anywhere on the globe to explore landmarks, cultural heritage, and weather.
+      </p>
+      <div class="guide-features-grid">
+        <div class="guide-feat-card">
+          <div class="guide-feat-title">✨ Natural Language AI</div>
+          <div class="guide-feat-desc">Ask "Coldest inhabited town", "Ancient pyramids", or "Scenic fjords in Norway".</div>
+        </div>
+        <div class="guide-feat-card">
+          <div class="guide-feat-title">🗺️ Reverse Grounding</div>
+          <div class="guide-feat-desc">Click anywhere directly on the map to discover its geography and history.</div>
+        </div>
+        <div class="guide-feat-card">
+          <div class="guide-feat-title">📷 360° Street View</div>
+          <div class="guide-feat-desc">Step into immersive first-person street panoramas of world destinations.</div>
+        </div>
+        <div class="guide-feat-card">
+          <div class="guide-feat-title">🌦️ Real-Time Weather</div>
+          <div class="guide-feat-desc">Inspect temperature, condition, wind, and humidity live from Open-Meteo.</div>
+        </div>
+      </div>
+      <div class="guide-modal-action">
+        <button type="button" id="guide-start-exploring" class="guide-cta-btn" onclick="window.closeLandingPage && window.closeLandingPage('explore')">Start Exploring</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Map & Exploration Workspace (Active when app is launched) -->
+  <div id="root">
+    <!-- Street View Exit Overlay Button -->
+    <button type="button" id="exit-streetview" class="hidden" aria-label="Exit Street View mode">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      <span>Exit Street View</span>
+    </button>
+
+    <!-- Collapsible Exploration Sidebar Panel -->
+    <aside id="sidebar" aria-label="Exploration Sidebar">
+      <div id="sidebar-header">
+        <div id="search-container">
+          <form id="search-form">
+            <div id="search-input-wrapper">
+              <svg id="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input
+                type="text"
+                id="search-input"
+                placeholder="Search any place, city, or landmark..."
+                autocomplete="off"
+                aria-label="Location search"
+              />
+              <button type="button" id="clear-search" class="hidden" aria-label="Clear search input">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <button type="submit" id="search-button">
+              <span id="search-button-text">Explore</span>
+            </button>
+          </form>
+
+          <!-- Country Filter Dropdown inside Search Section -->
+          <div id="country-selector-container">
+            <div id="country-selector-header">
+              <label for="country-select" id="country-select-label">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+                <span>Explore In</span>
+              </label>
+              <div id="country-badge-wrapper">
+                <span id="country-active-badge" class="hidden">Worldwide</span>
+                <button type="button" id="reset-country-btn" class="hidden" title="Reset to Worldwide" aria-label="Reset country filter to Worldwide">
+                  Reset
+                </button>
+              </div>
+            </div>
+            <div id="country-select-box">
+              <select id="country-select" aria-label="Filter exploration by country or select Worldwide">
+                <option value="WORLDWIDE" selected>🌍 Worldwide (Any country)</option>
+                <optgroup label="Popular Countries">
+                  <option value="India">🇮🇳 India</option>
+                  <option value="United States">🇺🇸 United States</option>
+                  <option value="Japan">🇯🇵 Japan</option>
+                  <option value="Italy">🇮🇹 Italy</option>
+                  <option value="Iceland">🇮🇸 Iceland</option>
+                  <option value="Brazil">🇧🇷 Brazil</option>
+                  <option value="Australia">🇦🇺 Australia</option>
+                  <option value="France">🇫🇷 France</option>
+                  <option value="Spain">🇪🇸 Spain</option>
+                  <option value="Germany">🇩🇪 Germany</option>
+                  <option value="United Kingdom">🇬🇧 United Kingdom</option>
+                  <option value="Canada">🇨🇦 Canada</option>
+                </optgroup>
+                <optgroup label="All Countries (A–Z)">
+                  <option value="Argentina">🇦🇷 Argentina</option>
+                  <option value="Australia">🇦🇺 Australia</option>
+                  <option value="Austria">🇦🇹 Austria</option>
+                  <option value="Brazil">🇧🇷 Brazil</option>
+                  <option value="Canada">🇨🇦 Canada</option>
+                  <option value="Chile">🇨🇱 Chile</option>
+                  <option value="China">🇨🇳 China</option>
+                  <option value="Colombia">🇨🇴 Colombia</option>
+                  <option value="Costa Rica">🇨🇷 Costa Rica</option>
+                  <option value="Croatia">🇭🇷 Croatia</option>
+                  <option value="Egypt">🇪🇬 Egypt</option>
+                  <option value="France">🇫🇷 France</option>
+                  <option value="Germany">🇩🇪 Germany</option>
+                  <option value="Greece">🇬🇷 Greece</option>
+                  <option value="Iceland">🇮🇸 Iceland</option>
+                  <option value="India">🇮🇳 India</option>
+                  <option value="Indonesia">🇮🇩 Indonesia</option>
+                  <option value="Ireland">🇮🇪 Ireland</option>
+                  <option value="Italy">🇮🇹 Italy</option>
+                  <option value="Japan">🇯🇵 Japan</option>
+                  <option value="Kenya">🇰🇪 Kenya</option>
+                  <option value="Malaysia">🇲🇾 Malaysia</option>
+                  <option value="Mexico">🇲🇽 Mexico</option>
+                  <option value="Morocco">🇲🇦 Morocco</option>
+                  <option value="Nepal">🇳🇵 Nepal</option>
+                  <option value="Netherlands">🇳🇱 Netherlands</option>
+                  <option value="New Zealand">🇳🇿 New Zealand</option>
+                  <option value="Norway">🇳🇴 Norway</option>
+                  <option value="Peru">🇵🇪 Peru</option>
+                  <option value="Philippines">🇵🇭 Philippines</option>
+                  <option value="Portugal">🇵🇹 Portugal</option>
+                  <option value="Saudi Arabia">🇸🇦 Saudi Arabia</option>
+                  <option value="South Africa">🇿🇦 South Africa</option>
+                  <option value="South Korea">🇰🇷 South Korea</option>
+                  <option value="Spain">🇪🇸 Spain</option>
+                  <option value="Sweden">🇸🇪 Sweden</option>
+                  <option value="Switzerland">🇨🇭 Switzerland</option>
+                  <option value="Thailand">🇹🇭 Thailand</option>
+                  <option value="Turkey">🇹🇷 Turkey</option>
+                  <option value="United Arab Emirates">🇦🇪 United Arab Emirates</option>
+                  <option value="United Kingdom">🇬🇧 United Kingdom</option>
+                  <option value="United States">🇺🇸 United States</option>
+                  <option value="Vietnam">🇻🇳 Vietnam</option>
+                </optgroup>
+              </select>
+              <div id="country-select-arrow" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Searches Dropdown -->
+          <div id="recent-searches-dropdown" class="hidden" role="region" aria-label="Recent Searches">
+            <div id="recent-searches-header">
+              <span id="recent-searches-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Recent Searches
+              </span>
+              <button type="button" id="clear-all-recent" aria-label="Clear all recent searches">Clear all</button>
+            </div>
+            <ul id="recent-searches-list" role="listbox" aria-label="Recent search history"></ul>
+            <div id="recent-searches-empty" class="hidden">No recent searches yet</div>
+          </div>
+        </div>
+        <button type="button" id="toggle-sidebar-btn" aria-label="Collapse sidebar panel" title="Collapse sidebar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Active Recommendation or Status Caption inside Sidebar -->
+      <div id="caption" class="hidden" role="status" aria-live="polite"></div>
+
+      <!-- Multiple Search Results Panel (e.g. for Ancient Mysteries) -->
+      <div id="results-container" class="hidden" role="region" aria-label="Exploration search results">
+        <div id="results-header">
+          <div class="results-header-actions">
+            <button type="button" id="results-back-btn" class="results-action-btn back-btn" aria-label="Back to exploration categories">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+              <span>Themes</span>
+            </button>
+            <button type="button" id="results-fit-btn" class="results-action-btn fit-btn" title="View all locations on map" aria-label="View all locations on map">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <polyline points="9 21 3 21 3 15"></polyline>
+                <line x1="21" y1="3" x2="14" y2="10"></line>
+                <line x1="3" y1="21" x2="10" y2="14"></line>
+              </svg>
+              <span>Fit All</span>
+            </button>
+          </div>
+
+          <div class="results-title-block">
+            <div class="results-title-row">
+              <span id="results-theme-icon" class="results-theme-icon">🗿</span>
+              <h2 id="results-title">Ancient Mysteries</h2>
+              <span id="results-count-badge" class="results-count-badge">6 discoveries</span>
+            </div>
+            <p id="results-subtitle">Select any ancient site to explore its ruins on Google Maps</p>
+          </div>
+        </div>
+
+        <div id="results-list" role="listbox" aria-label="List of ancient mysteries"></div>
+      </div>
+
+      <!-- Exploration & Categorized Presets in Sidebar -->
+      <div id="presets-container">
+        <div id="take-me-somewhere-header">
+          <div class="take-me-somewhere-title-row">
+            <span id="take-me-somewhere">Take me somewhere...</span>
+            <span id="presets-count" class="presets-count-badge">16 places</span>
+          </div>
+          <p id="take-me-somewhere-sub">Explore Earth with Gemini by mood, landscape, or wonder</p>
+
+          <!-- Category Filter Tabs -->
+          <div id="preset-filters" role="tablist" aria-label="Filter presets by theme">
+            <button type="button" class="preset-filter-btn active" data-filter="all" role="tab" aria-selected="true">All</button>
+            <button type="button" class="preset-filter-btn" data-filter="nature" role="tab" aria-selected="false">🌿 Nature</button>
+            <button type="button" class="preset-filter-btn" data-filter="culture" role="tab" aria-selected="false">🏛️ Culture</button>
+            <button type="button" class="preset-filter-btn" data-filter="extreme" role="tab" aria-selected="false">⚡ Extreme</button>
+            <button type="button" class="preset-filter-btn" data-filter="surreal" role="tab" aria-selected="false">🌌 Surreal</button>
+          </div>
+        </div>
+
+        <div id="presets" role="region" aria-label="Preset destination categories"></div>
+      </div>
+    </aside>
+
+    <!-- Button to re-open sidebar when collapsed -->
+    <button type="button" id="open-sidebar-btn" class="hidden" aria-label="Open exploration panel" title="Open exploration panel">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+      <span>Take me somewhere...</span>
+    </button>
+
+    <!-- Map View Controllers (Roadmap, Satellite, Hybrid, Terrain, Weather, Hero Return, Guide) -->
+    <div id="map-style-toggle" role="radiogroup" aria-label="Map style selector">
+      <button type="button" class="map-style-btn active" data-style="roadmap" id="style-btn-roadmap" role="radio" aria-checked="true" title="Default Map View">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+          <line x1="8" y1="2" x2="8" y2="18"></line>
+          <line x1="16" y1="6" x2="16" y2="22"></line>
+        </svg>
+        <span>Default</span>
+      </button>
+      <button type="button" class="map-style-btn" data-style="satellite" id="style-btn-satellite" role="radio" aria-checked="false" title="Satellite View">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+          <path d="M2 12h20"></path>
+        </svg>
+        <span>Satellite</span>
+      </button>
+      <button type="button" class="map-style-btn" data-style="hybrid" id="style-btn-hybrid" role="radio" aria-checked="false" title="Hybrid View (Satellite with Labels)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="3" y1="9" x2="21" y2="9"></line>
+          <line x1="9" y1="21" x2="9" y2="9"></line>
+        </svg>
+        <span>Hybrid</span>
+      </button>
+      <button type="button" class="map-style-btn" data-style="terrain" id="style-btn-terrain" role="radio" aria-checked="false" title="Terrain View (Topography)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m8 3 4 8 5-5 5 15H2L8 3z"></path>
+        </svg>
+        <span>Terrain</span>
+      </button>
+      <div class="map-toggle-divider" aria-hidden="true"></div>
+      <button type="button" class="map-style-btn weather-toggle-btn" id="weather-toggle-btn" aria-pressed="false" title="Toggle Weather Layer on Map">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path>
+        </svg>
+        <span>Weather</span>
+        <span id="weather-quick-badge" class="weather-quick-badge hidden">--°</span>
+      </button>
+      <div class="map-toggle-divider" aria-hidden="true"></div>
+      <!-- Button to return to Hero Landing Page -->
+      <button type="button" class="map-style-btn" id="open-landing-btn" title="Return to Hero Screen" aria-label="Return to Hero Screen">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        <span>Hero</span>
+      </button>
+    </div>
+
+    <!-- Floating Weather Layer Card for current location -->
+    <div id="weather-card" class="hidden" role="region" aria-label="Current Location Weather">
+      <div class="weather-card-top">
+        <div class="weather-icon-badge" id="weather-icon-badge">☀️</div>
+        <div class="weather-main-info">
+          <div class="weather-temp-row">
+            <span id="weather-temp" class="weather-temp">--°C</span>
+            <span id="weather-condition" class="weather-condition">Loading weather...</span>
+          </div>
+          <div class="weather-location-label" id="weather-location-label">Current Location</div>
+        </div>
+        <button type="button" id="close-weather-card" class="close-weather-btn" aria-label="Hide weather card">&times;</button>
+      </div>
+      <div class="weather-details-row">
+        <div class="weather-detail-item">
+          <span class="weather-detail-label">Feels like</span>
+          <span class="weather-detail-val" id="weather-feels">--°</span>
+        </div>
+        <div class="weather-detail-item">
+          <span class="weather-detail-label">Humidity</span>
+          <span class="weather-detail-val" id="weather-humidity">--%</span>
+        </div>
+        <div class="weather-detail-item">
+          <span class="weather-detail-label">Wind</span>
+          <span class="weather-detail-val" id="weather-wind">-- km/h</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Google Map Canvas -->
+    <div id="map"></div>
+
+    <!-- Dedicated Full-Screen Street View Container -->
+    <div id="streetview-container" class="hidden" role="region" aria-label="Street View Panorama Viewport"></div>
+  </div>
+
+  <!-- Main Application Script -->
+  <script type="module" src="/index.ts"></script>
+</body>
+</html>

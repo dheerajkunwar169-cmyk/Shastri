@@ -1,0 +1,7 @@
+{
+  "name": "3rd  ME",
+  "description": "Imported from GitHub: dheerajkunwar169-cmyk/map-explorer",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
